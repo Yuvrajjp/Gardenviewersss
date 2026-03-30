@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Garden Allocations — Admin</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f2ea; }
+    .wrap { max-width: 860px; margin: auto; background: white; border-radius: 12px; padding: 20px; }
+    .row { display: grid; grid-template-columns: 80px 1fr; gap: 10px; margin-bottom: 10px; }
+    input, button { padding: 8px; border-radius: 8px; border: 1px solid #c8c8c8; }
+    button { cursor: pointer; background: #2f5f2f; color: white; border: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Garden Allocations (Admin)</h1>
+    <p>Edit bed labels here. Share page updates instantly.</p>
+    <div id="rows"></div>
+    <button id="saveBtn">Save Layout</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { firebaseConfig, APP_PATHS } from "./firebase-config.js";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const rows = document.getElementById('rows');
+
+    const defaultBeds = Array.from({ length: 14 }, (_, i) => ({ id: i + 1, crop: '' }));
+    let beds = defaultBeds;
+
+    const render = () => {
+      rows.innerHTML = beds.map((b, i) => `
+        <div class="row">
+          <label>Bed ${b.id}</label>
+          <input data-index="${i}" value="${b.crop || ''}" placeholder="Crop or member" />
+        </div>
+      `).join('');
+
+      rows.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const idx = Number(e.target.dataset.index);
+          beds[idx].crop = e.target.value;
+        });
+      });
+    };
+
+    const load = async () => {
+      const snap = await getDoc(doc(db, APP_PATHS.layoutDoc));
+      beds = snap.exists() ? (snap.data().beds || defaultBeds) : defaultBeds;
+      render();
+    };
+
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      await setDoc(doc(db, APP_PATHS.layoutDoc), { beds, updatedAt: Date.now() });
+      alert('Saved. Share view now shows latest layout.');
+    });
+
+    load();
+  </script>
+</body>
+</html>
